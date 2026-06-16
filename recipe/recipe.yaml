@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: "0.7.2"
+  version: "0.7.3"
   # Upstream alex-pinkus/tree-sitter-swift checks in generated parser.c only under
   # the `-with-generated-files` tag — the plain `0.7.2` tag is missing src/parser.c
   # and won't build without running `tree-sitter generate`. PyPI's tree-sitter-swift
