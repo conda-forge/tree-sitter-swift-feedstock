@@ -2,14 +2,13 @@ schema_version: 1
 
 context:
   version: "0.7.3"
-  # Upstream alex-pinkus/tree-sitter-swift checks in generated parser.c only under
-  # the `-with-generated-files` tag — the plain `0.7.x` tags are missing
-  # src/parser.c and won't build without running `tree-sitter generate`. Also,
-  # upstream has never bumped pyproject.toml's `version` field from `0.0.1`,
-  # so we patch it at build time (see patches/0001-bump-pyproject-version-to-match-tag.patch)
-  # to match the actual tag. Otherwise downstreams with `pip check` fail their
-  # tests because the bundled dist-info says `0.0.1`.
-  tag: "0.7.3-with-generated-files"
+  # Upstream alex-pinkus/tree-sitter-swift ships TWO parallel tag schemes:
+  # `vX.Y.Z` (clean source, no src/parser.c — would require tree-sitter CLI
+  # + nodejs to run `tree-sitter generate`) and `X.Y.Z-with-generated-files`
+  # (same tree with the generated parser.c committed). We use the latter to
+  # avoid a node toolchain in build deps. The tag template tracks `version`
+  # so autotick bumps work without recipe-level edits.
+  tag: ${{ version }}-with-generated-files
 
 package:
   name: tree-sitter-swift
@@ -18,14 +17,28 @@ package:
 source:
   url: https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/${{ tag }}.tar.gz
   sha256: e2e84d3b97cf6a0afbcab793c4910123da92a34c395b09cc8d0880562a21e956
-  patches:
-    - patches/0001-bump-pyproject-version-to-match-tag.patch
 
 build:
   number: 2
   # abi3 packages build once at python_min and ship one artifact per platform.
   skip: is_abi3 and not is_python_min
-  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  # Upstream's pyproject.toml carries a placeholder `version = "0.0.1"` that
+  # has never been bumped despite tagged releases. Without this rewrite the
+  # produced wheel ships `tree_sitter_swift-0.0.1.dist-info`, which breaks
+  # `pip check` for any downstream with an upper-bounded constraint like
+  # `tree-sitter-swift<0.9,>=0.7` (e.g. graphifyy 0.8.40). The sed pattern
+  # matches whatever upstream's value is and substitutes our ${{ version }},
+  # so autotick bumps don't need recipe edits.
+  script:
+    - if: unix
+      then: |
+        sed -i.bak 's/^version = "[^"]*"$/version = "${{ version }}"/' pyproject.toml
+        rm -f pyproject.toml.bak
+        ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+    - if: win
+      then: |
+        powershell -Command "(Get-Content pyproject.toml) -replace '^version = \"[^\"]*\"$', 'version = \"${{ version }}\"' | Set-Content pyproject.toml"
+        ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
   python:
     version_independent: ${{ is_abi3 }}
 
