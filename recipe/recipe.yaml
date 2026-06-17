@@ -26,19 +26,22 @@ build:
   # has never been bumped despite tagged releases. Without this rewrite the
   # produced wheel ships `tree_sitter_swift-0.0.1.dist-info`, which breaks
   # `pip check` for any downstream with an upper-bounded constraint like
-  # `tree-sitter-swift<0.9,>=0.7` (e.g. graphifyy 0.8.40). The sed pattern
-  # matches whatever upstream's value is and substitutes our ${{ version }},
-  # so autotick bumps don't need recipe edits.
+  # `tree-sitter-swift<0.9,>=0.7` (e.g. graphifyy 0.8.40). The Python helper
+  # (recipe/fix_pyproject_version.py) reads $PKG_VERSION and rewrites the
+  # first `version = "..."` line in pyproject.toml — works cross-platform
+  # without sed/powershell quoting hell, and is idempotent (no-op once
+  # upstream resumes proper version bumping).
   script:
     - if: unix
       then: |
-        sed -i.bak 's/^version = "[^"]*"$/version = "${{ version }}"/' pyproject.toml
-        rm -f pyproject.toml.bak
+        ${{ PYTHON }} ${RECIPE_DIR}/fix_pyproject_version.py
         ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
     - if: win
       then: |
-        powershell -Command "(Get-Content pyproject.toml) -replace '^version = \"[^\"]*\"$', 'version = \"${{ version }}\"' | Set-Content pyproject.toml"
-        ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+        "%PYTHON%" "%RECIPE_DIR%\fix_pyproject_version.py"
+        if errorlevel 1 exit 1
+        "%PYTHON%" -m pip install . -vv --no-deps --no-build-isolation
+        if errorlevel 1 exit 1
   python:
     version_independent: ${{ is_abi3 }}
 
