@@ -3,10 +3,13 @@ schema_version: 1
 context:
   version: "0.7.3"
   # Upstream alex-pinkus/tree-sitter-swift checks in generated parser.c only under
-  # the `-with-generated-files` tag — the plain `0.7.2` tag is missing src/parser.c
-  # and won't build without running `tree-sitter generate`. PyPI's tree-sitter-swift
-  # is stuck at v0.0.1; use this GitHub tag for the actual current release.
-  tag: "0.7.2-with-generated-files"
+  # the `-with-generated-files` tag — the plain `0.7.x` tags are missing
+  # src/parser.c and won't build without running `tree-sitter generate`. Also,
+  # upstream has never bumped pyproject.toml's `version` field from `0.0.1`,
+  # so we patch it at build time (see patches/0001-bump-pyproject-version-to-match-tag.patch)
+  # to match the actual tag. Otherwise downstreams with `pip check` fail their
+  # tests because the bundled dist-info says `0.0.1`.
+  tag: "0.7.3-with-generated-files"
 
 package:
   name: tree-sitter-swift
@@ -14,10 +17,12 @@ package:
 
 source:
   url: https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/${{ tag }}.tar.gz
-  sha256: b3ee119c2361e66b8c668052b4992c90ac9627cd8e016c7befdc500d0412ab77
+  sha256: e2e84d3b97cf6a0afbcab793c4910123da92a34c395b09cc8d0880562a21e956
+  patches:
+    - patches/0001-bump-pyproject-version-to-match-tag.patch
 
 build:
-  number: 1
+  number: 2
   # abi3 packages build once at python_min and ship one artifact per platform.
   skip: is_abi3 and not is_python_min
   script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation

@@ -1,0 +1,34 @@
+Subject: Bump pyproject.toml version 0.0.1 -> 0.7.3 to match tag
+
+Upstream alex-pinkus/tree-sitter-swift has never bumped its pyproject.toml
+`version` field from the placeholder `0.0.1` despite tagging releases up
+through v0.7.3 — the tag scheme is the only source-of-truth for the
+actual grammar version. PyPI's `tree-sitter-swift` is also stuck at
+v0.0.1 for the same reason.
+
+The conda package's wheel-bundled dist-info metadata then ships as
+`tree_sitter_swift-0.0.1.dist-info`, which causes `pip check` to fail on
+any downstream package that declares an upper-bounded constraint like
+`tree-sitter-swift<0.9,>=0.7` (e.g. graphifyy 0.8.40 in
+conda-forge/graphifyy-feedstock#8). The conda solver picks our 0.7.3
+package, but pip then reads dist-info's 0.0.1 < 0.7 and rejects it.
+
+Patch the pyproject.toml version at the recipe level so the produced
+wheel ships `tree_sitter_swift-0.7.3.dist-info` matching the conda
+version.
+
+Reported upstream: <TODO: open alex-pinkus/tree-sitter-swift issue>.
+This patch becomes a no-op once upstream restores version-bumping
+discipline.
+
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
+ [project]
+ name = "tree-sitter-swift"
+ description = "Swift grammar for tree-sitter"
+-version = "0.0.1"
++version = "0.7.3"
+ keywords = ["incremental", "parsing", "tree-sitter", "swift"]
+ classifiers = [
+   "Intended Audience :: Developers",
